@@ -1,0 +1,16 @@
+0000000000000000000000000000000000000000 5131db71431e8a9a51deec5b5c12d94655cbf46b Kim Monzon <khemchay@gmail.com> 1777965735 +0200	commit (initial): Add local multi-region Postgres failover simulator
+5131db71431e8a9a51deec5b5c12d94655cbf46b 5131db71431e8a9a51deec5b5c12d94655cbf46b Kim Monzon <khemchay@gmail.com> 1777965739 +0200	Branch: renamed refs/heads/master to refs/heads/main
+5131db71431e8a9a51deec5b5c12d94655cbf46b 0fa1508104f71d2f64c357a373030e4420810a11 Kim Monzon <khemchay@gmail.com> 1777968738 +0200	commit: Add router and automatic failover controller
+0fa1508104f71d2f64c357a373030e4420810a11 dc8e67a747f289b018b525b485a2627c58cdade4 Kim Monzon <khemchay@gmail.com> 1777969050 +0200	commit: Add Next.js dashboard to compare regions
+dc8e67a747f289b018b525b485a2627c58cdade4 6fb423c270ae78087e4d121b62bb44051e0f791d Kim Monzon <khemchay@gmail.com> 1777969519 +0200	commit: Expose DB roles and add UI admin/read proxy
+6fb423c270ae78087e4d121b62bb44051e0f791d 44aafa8c3379d767708441d05b3f6d6e6e2a03a4 Kim Monzon <khemchay@gmail.com> 1777969765 +0200	commit: Add ADR and PlantUML architecture diagrams
+44aafa8c3379d767708441d05b3f6d6e6e2a03a4 481730021489c5ee1cf8366957058bda002762c2 Kim Monzon <khemchay@gmail.com> 1777969907 +0200	commit: Fix PlantUML diagrams by splitting sequence
+481730021489c5ee1cf8366957058bda002762c2 88d57d57eb5fa54849650081adbc08b6def139dd Kim Monzon <khemchay@gmail.com> 1777970524 +0200	commit: Add decision-aware failover endpoint and dashboard
+88d57d57eb5fa54849650081adbc08b6def139dd ed38fb044e2a4fff2ffa96c9e944cc22560a5501 Kim Monzon <khemchay@gmail.com> 1777971660 +0200	commit: Fix decision lag logic using WAL LSN bytes
+ed38fb044e2a4fff2ffa96c9e944cc22560a5501 b4210b6e810a2c17d124e865841431b7460378ea Kim Monzon <khemchay@gmail.com> 1777972820 +0200	commit: Add multiple standby regions (c/d/e)
+b4210b6e810a2c17d124e865841431b7460378ea 6f326cee2397336e2ddeaed56030dec91db9c427 Kim Monzon <khemchay@gmail.com> 1777972973 +0200	commit: Add infra inspector and show per-region container specs
+6f326cee2397336e2ddeaed56030dec91db9c427 841e6af8a6ddd9133904bb81c876bdf170f953d6 Kim Monzon <khemchay@gmail.com> 1777973272 +0200	commit: Make regions toggleable to reduce load
+841e6af8a6ddd9133904bb81c876bdf170f953d6 2328e17c706a0dddf14357e7449af27fd27dc994 Kim Monzon <khemchay@gmail.com> 1777973459 +0200	commit: Show loading state when health is unset
+2328e17c706a0dddf14357e7449af27fd27dc994 35167d96395c0ff90e1606f2f9a7b665fcc0b459 Kim Monzon <khemchay@gmail.com> 1777973574 +0200	commit: Fix write blocking by using WAL lag bytes
+35167d96395c0ff90e1606f2f9a7b665fcc0b459 ba2b4cf47cd2e53847c83021bf98a0c5d222ecb0 Kim Monzon <khemchay@gmail.com> 1777986868 +0200	commit: Improve UI performance and document failover criteria.
+ba2b4cf47cd2e53847c83021bf98a0c5d222ecb0 5a1500cc4a12b868edcb995e38b21c35a85867c8 Kim Monzon <khemchay@gmail.com> 1777986868 +0200	filter-branch: rewrite

@@ -1,0 +1,87 @@
+@startuml
+title Request + failover sequences (local)
+
+skinparam shadowing false
+skinparam maxMessageSize 120
+
+actor User
+participant "ui\nNext.js (browser)" as UI
+participant "ui API routes\n(/api/* proxy)" as UIR
+participant "router\nLB sim" as LB
+participant "failover-controller" as FC
+participant "api" as API
+participant "postgres-primary\n(region-a)" as DBA
+participant "postgres-replica\n(region-b)" as DBB
+participant "infra\n(docker stats)\n(background)" as INFRA
+
+== Steady state ==
+note over DBA,DBB
+Region A: primary (pg_is_in_recovery=false)
+Region B: standby (pg_is_in_recovery=true)
+Streaming replication active
+end note
+
+== A) Normal write flow (sync) ==
+User -> UI : submit key/value
+UI -> UIR : POST /api/write
+UIR -> LB : POST /write
+LB -> API : POST /write
+API -> DBA : INSERT/UPDATE kv (commit)
+API --> LB : 200 { row, region }
+LB --> UIR : response
+UIR --> UI : response
+note over UI
+UI updates Region A immediately
+and refreshes dashboard
+end note
+
+== B) Read flow (sync) ==
+UI -> UIR : GET /api/read?key=...
+UIR -> LB : GET /read?key=...
+LB -> API : GET /read?key=...
+API -> DBA : SELECT (active region)
+API --> LB : 200 { row, region }
+LB --> UIR : response
+UIR --> UI : response
+
+== C) Background telemetry (async to UI) ==
+UI -[#gray]-> UIR : GET /api/infra (periodic)
+UIR -[#gray]-> INFRA : GET /infra (cached)
+INFRA -[#gray]-> UIR : snapshot
+UIR -[#gray]-> UI : snapshot (non-blocking)
+
+== D) Automatic failover control loop ==
+loop every CHECK_INTERVAL_SECONDS
+  FC -> API : GET /decision
+  API -> DBA : health/role checks
+  API -> DBB : health + WAL caught_up/lag bytes
+  API --> FC : decision { can_failover, checks, risk }
+end
+
+== Primary failure ==
+User -> DBA : docker compose stop postgres-primary
+note over DBA : container stopped / unreachable
+
+note over FC
+Controller only proceeds when:
+- primary unreachable for N seconds
+- replica healthy
+- WAL caught up + lag OK
+- no split brain
+end note
+
+== Promote + switch ==
+FC -> DBB : pg_ctl promote
+note over DBB : standby -> primary\n(pg_is_in_recovery=false)
+FC -> API : POST /admin/switch?region=region-b
+API --> FC : active_region=region-b
+
+== After failover ==
+note over DBA,DBB
+Region B now primary and writable.
+Replication is stopped; regions can diverge.
+To restore A->B replication in this lab: reset volumes.
+end note
+
+@enduml
+

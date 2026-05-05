@@ -1,0 +1,254 @@
+services:
+  postgres-primary:
+    image: postgres:16
+    container_name: postgres-primary
+    environment:
+      POSTGRES_DB: app
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app_password
+      REPL_USER: replicator
+      REPL_PASSWORD: repl_password
+    command:
+      - postgres
+      - -c
+      - wal_level=replica
+      - -c
+      - max_wal_senders=10
+      - -c
+      - max_replication_slots=10
+      - -c
+      - wal_keep_size=256MB
+      - -c
+      - hot_standby=on
+      - -c
+      - listen_addresses=*
+    ports:
+      - "54321:5432"
+    volumes:
+      - pg_primary_data:/var/lib/postgresql/data
+      - ./postgres/primary/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d app -h 127.0.0.1"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+    networks:
+      - regions
+
+  postgres-replica:
+    image: postgres:16
+    container_name: postgres-replica
+    environment:
+      POSTGRES_DB: app
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app_password
+      PRIMARY_HOST: postgres-primary
+      PRIMARY_PORT: "5432"
+      REPL_USER: replicator
+      REPL_PASSWORD: repl_password
+      SLOT_NAME: region_b_slot
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+    ports:
+      - "54322:5432"
+    volumes:
+      - pg_replica_data:/var/lib/postgresql/data
+      - ./postgres/replica/bootstrap:/bootstrap:ro
+    entrypoint: ["/bootstrap/replica-entrypoint.sh"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d app -h 127.0.0.1"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+    networks:
+      - regions
+
+  postgres-replica-c:
+    image: postgres:16
+    container_name: postgres-replica-c
+    environment:
+      POSTGRES_DB: app
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app_password
+      PRIMARY_HOST: postgres-primary
+      PRIMARY_PORT: "5432"
+      REPL_USER: replicator
+      REPL_PASSWORD: repl_password
+      SLOT_NAME: region_c_slot
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+    ports:
+      - "54323:5432"
+    volumes:
+      - pg_replica_c_data:/var/lib/postgresql/data
+      - ./postgres/replica/bootstrap:/bootstrap:ro
+    entrypoint: ["/bootstrap/replica-entrypoint.sh"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d app -h 127.0.0.1"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+    networks:
+      - regions
+
+  postgres-replica-d:
+    image: postgres:16
+    container_name: postgres-replica-d
+    environment:
+      POSTGRES_DB: app
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app_password
+      PRIMARY_HOST: postgres-primary
+      PRIMARY_PORT: "5432"
+      REPL_USER: replicator
+      REPL_PASSWORD: repl_password
+      SLOT_NAME: region_d_slot
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+    ports:
+      - "54324:5432"
+    volumes:
+      - pg_replica_d_data:/var/lib/postgresql/data
+      - ./postgres/replica/bootstrap:/bootstrap:ro
+    entrypoint: ["/bootstrap/replica-entrypoint.sh"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d app -h 127.0.0.1"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+    networks:
+      - regions
+
+  postgres-replica-e:
+    image: postgres:16
+    container_name: postgres-replica-e
+    environment:
+      POSTGRES_DB: app
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app_password
+      PRIMARY_HOST: postgres-primary
+      PRIMARY_PORT: "5432"
+      REPL_USER: replicator
+      REPL_PASSWORD: repl_password
+      SLOT_NAME: region_e_slot
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+    ports:
+      - "54325:5432"
+    volumes:
+      - pg_replica_e_data:/var/lib/postgresql/data
+      - ./postgres/replica/bootstrap:/bootstrap:ro
+    entrypoint: ["/bootstrap/replica-entrypoint.sh"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d app -h 127.0.0.1"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+    networks:
+      - regions
+
+  api:
+    build:
+      context: ./api
+    container_name: api
+    environment:
+      REGION_A_DSN: postgresql://app:app_password@postgres-primary:5432/app
+      REGION_B_DSN: postgresql://app:app_password@postgres-replica:5432/app
+      REGION_C_DSN: postgresql://app:app_password@postgres-replica-c:5432/app
+      REGION_D_DSN: postgresql://app:app_password@postgres-replica-d:5432/app
+      REGION_E_DSN: postgresql://app:app_password@postgres-replica-e:5432/app
+      ENABLED_REGIONS: region-a,region-b
+      ACTIVE_REGION_FILE: /state/active_region.txt
+      DEFAULT_ACTIVE_REGION: region-a
+      LOG_LEVEL: info
+      # When enabled, writes will refuse to proceed if the standby WAL lag is high
+      MAX_REPLICA_WAL_LAG_BYTES: "1048576"
+      DECISION_FAILURE_STABLE_SECONDS: "6"
+      DECISION_WAL_LAG_BYTES_THRESHOLD: "1048576"
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+      postgres-replica:
+        condition: service_healthy
+      postgres-replica-c:
+        condition: service_healthy
+      postgres-replica-d:
+        condition: service_healthy
+      postgres-replica-e:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    volumes:
+      - api_state:/state
+    networks:
+      - regions
+
+  router:
+    build:
+      context: ./router
+    container_name: router
+    depends_on:
+      api:
+        condition: service_started
+    ports:
+      - "8090:8090"
+    networks:
+      - regions
+
+  failover-controller:
+    build:
+      context: ./failover-controller
+    container_name: failover-controller
+    environment:
+      API_BASE: http://api:8080
+      CHECK_INTERVAL_SECONDS: "2"
+    depends_on:
+      api:
+        condition: service_started
+    # needs access to the docker daemon to run `docker compose exec ... promote`
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - regions
+
+  ui:
+    build:
+      context: ./ui
+    container_name: ui
+    environment:
+      ROUTER_INTERNAL_BASE: http://router:8090
+      INFRA_INTERNAL_BASE: http://infra:7070
+    depends_on:
+      router:
+        condition: service_started
+    ports:
+      - "3000:3000"
+    networks:
+      - regions
+
+  infra:
+    build:
+      context: ./infra
+    container_name: infra
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "7070:7070"
+    networks:
+      - regions
+
+volumes:
+  pg_primary_data:
+  pg_replica_data:
+  pg_replica_c_data:
+  pg_replica_d_data:
+  pg_replica_e_data:
+  api_state:
+
+networks:
+  regions:
+    driver: bridge

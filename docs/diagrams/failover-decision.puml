@@ -1,0 +1,71 @@
+@startuml
+title Failover Health Criteria (Decision Model)
+
+skinparam shadowing false
+skinparam maxMessageSize 140
+
+start
+:Collect inputs;
+note right
+Inputs (from /decision):
+- primary_reachable?
+- replica_healthy?
+- no_split_brain?
+- failure_duration >= N?
+- wal_lag_bytes <= threshold?
+- caught_up? (receive_lsn == replay_lsn)
+end note
+
+if (primary_reachable?) then (yes)
+  :BLOCKED;
+  note right
+  Not a failover scenario.
+  Continue monitoring.
+  end note
+  stop
+else (no)
+  :primary unreachable;
+endif
+
+if (failure stable for N seconds?) then (no)
+  :BLOCKED (risk=MEDIUM);
+  note right
+  Wait until failure is stable
+  to avoid flapping.
+  end note
+  stop
+endif
+
+if (replica healthy?) then (no)
+  :BLOCKED (risk=HIGH);
+  stop
+endif
+
+if (no split brain?) then (no)
+  :BLOCKED (risk=HIGH);
+  note right
+  If both are reachable and both
+  claim primary -> block automation.
+  end note
+  stop
+endif
+
+if (wal lag ok AND caught up?) then (no)
+  :BLOCKED (risk=HIGH);
+  note right
+  Prevent data loss:
+  standby not fully replayed.
+  end note
+  stop
+endif
+
+:SAFE TO FAILOVER (risk=LOW);
+note right
+Controller actions:
+1) promote standby (pg_ctl promote)
+2) switch active region (/admin/switch)
+end note
+stop
+
+@enduml
+

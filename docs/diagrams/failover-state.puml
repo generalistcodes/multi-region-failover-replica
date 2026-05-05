@@ -1,0 +1,39 @@
+@startuml
+title Failover state machine (single-writer, async replication)
+
+skinparam shadowing false
+hide empty description
+
+state "PRIMARY_ACTIVE\n(region-a active)" as PRIMARY_ACTIVE
+state "STANDBY_READY\n(region-b standby)" as STANDBY_READY
+state "PRIMARY_FAILED\n(region-a unreachable)" as PRIMARY_FAILED
+state "PROMOTING\n(promote region-b)" as PROMOTING
+state "NEW_PRIMARY\n(region-b active)" as NEW_PRIMARY
+state "REJOINING\n(reseed + reattach)" as REJOINING
+
+[*] --> PRIMARY_ACTIVE
+PRIMARY_ACTIVE --> STANDBY_READY : streaming replication running\n(async)
+STANDBY_READY --> PRIMARY_FAILED : health check fails\n(primary unreachable)
+PRIMARY_FAILED --> PROMOTING : failure stable AND\nreplica healthy AND\nWAL caught up AND\nno split brain
+PROMOTING --> NEW_PRIMARY : pg_ctl promote OK\n+ /admin/switch
+
+note right of PRIMARY_ACTIVE
+Single writer:
+only one region should accept writes.
+end note
+
+note right of STANDBY_READY
+Replica visibility is eventual:
+async WAL streaming.
+end note
+
+note right of NEW_PRIMARY
+After promotion, replication stops.
+Regions may diverge.
+end note
+
+NEW_PRIMARY --> REJOINING : manual failback procedure\n(reset volumes in this lab)
+REJOINING --> PRIMARY_ACTIVE : region-a reseeded\nregion-b back to standby
+
+@enduml
+

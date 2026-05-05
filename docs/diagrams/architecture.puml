@@ -1,0 +1,67 @@
+@startuml
+title Local multi-region failover simulator (Docker)
+
+skinparam componentStyle rectangle
+skinparam shadowing false
+skinparam wrapWidth 200
+skinparam maxMessageSize 120
+
+legend left
+  == Roles ==
+  - "primary": pg_is_in_recovery() = false
+  - "standby": pg_is_in_recovery() = true
+
+  == Important behavior ==
+  - Single-writer model: only one region should accept writes at a time
+  - Replication is async: Region A -> Region B WAL streaming
+  - Infra telemetry is NOT on the critical path (background only)
+  - After promotion, Region B becomes primary and replication stops (regions may diverge)
+endlegend
+
+package "Client" {
+  actor User
+}
+
+package "Docker network: regions" {
+  component "ui\nNext.js (3000)" as UI
+  component "ui API routes\nNext.js server (3000)\n(/api/* proxies)" as UIR
+  component "router\nLB simulation (8090)" as LB
+  component "api\nFastAPI (8080)" as API
+  component "failover-controller" as FC
+  component "infra\nDocker stats (7070)\n(cached, best-effort)" as INFRA
+
+  database "Region A\npostgres-primary\n(5432)" as DBA
+  database "Region B\npostgres-replica\n(5432)" as DBB
+}
+
+User --> UI : browser
+UI --> UIR : fetch /api/dashboard,\n/api/write,\n/api/read
+User --> LB : curl /write,/read,/status (optional)
+UIR --> LB : HTTP proxy (sync)
+LB --> API : forwards HTTP
+
+note on link UIR --> LB
+  Synchronous data path:
+  UI waits for response
+end note
+
+API --> DBA : SQL write/read\n(when active=region-a)
+API --> DBB : SQL read/write\n(when active=region-b)
+
+DBA ..> DBB : WAL streaming replication\n(primary -> standby)
+note on link DBA ..> DBB
+  Async: replica visibility is eventual
+end note
+
+FC --> API : poll /decision or /status
+FC --> DBB : docker exec pg_ctl promote\n(only on failover)
+FC --> API : POST /admin/switch?region=region-b
+
+UIR ..> INFRA : GET /api/infra\n(background, non-blocking)
+note on link UIR ..> INFRA
+  Observability only:
+  MUST NOT block rows/status updates
+end note
+
+@enduml
+

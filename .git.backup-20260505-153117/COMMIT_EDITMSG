@@ -1,0 +1,5 @@
+Improve UI performance and document failover criteria.
+
+Decouple infra telemetry from the critical UI data path, collapse UI polling into a single /dashboard endpoint, and add DB connection pooling to reduce latency under frequent refresh. Update and add PlantUML diagrams to reflect decision criteria, state machine, and request flows.
+
+Co-authored-by: Cursor <cursoragent@cursor.com>

@@ -1,0 +1,17 @@
+.DS_Store
+.env
+.venv/
+__pycache__/
+*.pyc
+
+# Local tooling
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+
+# Cursor/IDE
+.cursor/
+
+# Docker / compose local overrides
+docker-compose.override.yml
+notes/*.md
