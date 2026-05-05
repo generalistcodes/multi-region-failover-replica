@@ -2,6 +2,8 @@
 
 This repo runs a **two-region Postgres** setup on one laptop:
 
+<img width="1428" height="1038" alt="image" src="https://github.com/user-attachments/assets/a150a0f5-c326-4e84-87e2-bf4e76bc76c1" />
+
 - **Download**: on GitHub, use the green **Code** button → **Download ZIP**, or download directly via `https://github.com/generalistcodes/failover-safe/archive/refs/heads/main.zip`
 
 - **Region A**: `postgres-primary` (primary)
