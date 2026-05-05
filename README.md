@@ -220,3 +220,21 @@ To delete volumes (fresh cluster):
 docker compose down -v
 ```
 
+⚠️ Disclaimer: this is a simulation, not a production recommendation
+
+This project is meant purely as a local demonstration of failover behavior and PostgreSQL replication concepts based on my own experimentation and learning setup.
+
+It is not intended to represent a production-ready architecture, and it should not be interpreted as a recommendation for how to run systems like Keycloak or identity infrastructure in real environments.
+
+In real-world setups, there are several well-established and production-proven approaches that handle replication, failover, and leader election in a much safer way, such as:
+
+CloudNativePG
+Crunchy PostgreSQL Operator
+Patroni
+
+These solutions already implement critical behaviors like fencing, automatic leader election, safe promotion, and controlled recovery—things that are intentionally simplified or manually simulated in this project.
+
+The goal here is not to compete with those systems, but to understand the underlying mechanics of replication and failover decisions in a controlled environment.
+
+In practice, different organizations may choose different architectures depending on their requirements around consistency, availability, and operational complexity.
+
